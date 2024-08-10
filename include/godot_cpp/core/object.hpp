@@ -53,6 +53,18 @@
 #define ADD_PROPERTY(m_property, m_setter, m_getter) ::godot::ClassDB::add_property(get_class_static(), m_property, m_setter, m_getter)
 #define ADD_PROPERTYI(m_property, m_setter, m_getter, m_index) ::godot::ClassDB::add_property(get_class_static(), m_property, m_setter, m_getter, m_index)
 
+#define EXPORT_PROPERTY(m_property, m_type, ...) \
+    do {                            \
+        typedef decltype(static_cast<self_type *>(nullptr)->m_property) property_t; \
+        ClassDB::bind_closure(D_METHOD("set_" #m_property), [](self_type *self, property_t new_value) { self->m_property = new_value; }); \
+        ClassDB::bind_closure(D_METHOD("get_" #m_property), [](self_type *self) -> property_t { return self->m_property; });              \
+        ADD_PROPERTY(                       \
+            PropertyInfo(Variant::m_type, #m_property __VA_OPT__(,) __VA_ARGS__),              \
+            "set_" #m_property, \
+            "get_" #m_property \
+        ); \
+    } while (false)
+
 namespace godot {
 
 namespace internal {
