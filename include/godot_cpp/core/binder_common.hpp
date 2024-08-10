@@ -38,6 +38,7 @@
 
 #include <array>
 #include <vector>
+#include <functional>
 
 namespace godot {
 
@@ -682,6 +683,48 @@ void call_with_ptr_args_static_method_ret_helper(R (*p_method)(P...), const GDEx
 template <typename R, typename... P>
 void call_with_ptr_args_static_method_ret(R (*p_method)(P...), const GDExtensionConstTypePtr *p_args, void *r_ret) {
 	call_with_ptr_args_static_method_ret_helper<R, P...>(p_method, p_args, r_ret, BuildIndexSequence<sizeof...(P)>{});
+}
+
+template <typename T, typename... P, size_t... Is>
+void call_with_variant_args_function(const std::function<void (T*, P...)> &p_wrapper, T *p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionCallError &r_error, IndexSequence<Is...>) {
+    r_error.error = GDEXTENSION_CALL_OK;
+
+    std::array<const Variant *, sizeof...(P)> argsp;
+    for (int32_t i = 0; i < (int32_t)sizeof...(P); i++) {
+        argsp[i] = static_cast<const Variant *>(p_args[i]);
+    }
+
+#ifdef DEBUG_METHODS_ENABLED
+    p_wrapper(p_instance, VariantCasterAndValidate<P>::cast(argsp.data(), Is, r_error)...);
+#else
+    p_wrapper(p_instance, VariantCaster<P>::cast(*p_args[Is])...);
+#endif
+}
+
+template<typename T, typename... P, size_t... Is>
+void call_with_ptr_args_function(const std::function<void (T*, P...)> &p_wrapper, T *p_instance, const GDExtensionConstTypePtr *p_args, IndexSequence<Is...>) {
+    p_wrapper(p_instance, PtrToArg<P>::convert(p_args[Is])...);
+}
+
+template <typename T, typename R, typename... P, size_t... Is>
+void call_with_variant_args_function_ret(const std::function<R (T*, P...)> &p_wrapper, T *p_instance, const GDExtensionConstVariantPtr *p_args, Variant &r_ret, GDExtensionCallError &r_error, IndexSequence<Is...>) {
+    r_error.error = GDEXTENSION_CALL_OK;
+
+    std::array<const Variant *, sizeof...(P)> argsp;
+    for (int32_t i = 0; i < (int32_t)sizeof...(P); i++) {
+        argsp[i] = static_cast<const Variant *>(p_args[i]);
+    }
+
+#ifdef DEBUG_METHODS_ENABLED
+    r_ret = p_wrapper(p_instance, VariantCasterAndValidate<P>::cast(argsp.data(), Is, r_error)...);
+#else
+    r_ret = p_wrapper(p_instance, VariantCaster<P>::cast(*p_args[Is])...);
+#endif
+}
+
+template <typename T, typename R, typename... P, size_t... Is>
+void call_with_ptr_args_function_ret(const std::function<R (T*, P...)> &p_wrapper, T *p_instance, const GDExtensionConstTypePtr *p_args, void *r_ret, IndexSequence<Is...>) {
+    PtrToArg<R>::encode(p_wrapper(p_instance, PtrToArg<P>::convert(p_args[Is])...), r_ret);
 }
 
 #if defined(__GNUC__) && !defined(__clang__)

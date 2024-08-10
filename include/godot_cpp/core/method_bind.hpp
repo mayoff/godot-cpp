@@ -44,6 +44,7 @@
 #include <vector>
 
 #include <iostream>
+#include <functional>
 
 namespace godot {
 
@@ -608,7 +609,7 @@ protected:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wlogical-op"
 #endif
-	virtual GDExtensionVariantType gen_argument_type(int p_arg) const {
+    virtual GDExtensionVariantType gen_argument_type(int p_arg) const {
 		if (p_arg >= 0 && p_arg < (int)sizeof...(P)) {
 			return call_get_argument_type<P...>(p_arg);
 		} else {
@@ -728,6 +729,165 @@ template <typename R, typename... P>
 MethodBind *create_static_method_bind(R (*p_method)(P...)) {
 	MethodBind *a = memnew((MethodBindTRS<R, P...>)(p_method));
 	return a;
+}
+
+// FUNCTION WRAPPER BINDS
+
+// no return
+
+template <typename T, typename... P>
+class MethodBindTF : public MethodBind {
+    std::function<void (T*, P...)> wrapper;
+
+protected:
+// GCC raises warnings in the case P = {} as the comparison is always false...
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wlogical-op"
+#endif
+    virtual GDExtensionVariantType  gen_argument_type(int p_arg) const {
+        if (p_arg >= 0 && p_arg < (int)sizeof...(P)) {
+            return call_get_argument_type<P...>(p_arg);
+        } else {
+            return GDEXTENSION_VARIANT_TYPE_NIL;
+        }
+    }
+
+    virtual PropertyInfo gen_argument_type_info(int p_arg) const {
+        PropertyInfo pi;
+        if (p_arg >= 0 && p_arg < (int)sizeof...(P)) {
+            call_get_argument_type_info<P...>(p_arg, pi);
+        } else {
+            pi = PropertyInfo();
+        }
+        return pi;
+    }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+public:
+    virtual GDExtensionClassMethodArgumentMetadata get_argument_metadata(int p_arg) const {
+        return call_get_argument_metadata<P...>(p_arg);
+    }
+
+    virtual Variant call(GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args, GDExtensionInt p_argcount, GDExtensionCallError &r_error) const {
+#ifdef DEBUG_ENABLED
+        if ((size_t)p_argcount > sizeof...(P)) {
+            r_error.error = GDEXTENSION_CALL_ERROR_TOO_MANY_ARGUMENTS;
+            r_error.expected = (int32_t)sizeof...(P);
+            return;
+        }
+
+        if ((size_t)p_argcount < sizeof...(P)) {
+            r_error.error = GDEXTENSION_CALL_ERROR_TOO_FEW_ARGUMENTS;
+            r_error.expected = (int32_t)sizeof...(P);
+            return;
+        }
+#endif
+
+        call_with_variant_args_function(wrapper, static_cast<T *>(p_instance), p_args, r_error, BuildIndexSequence<sizeof...(P)>{});
+        return Variant();
+    }
+
+    virtual void ptrcall(GDExtensionClassInstancePtr p_instance, const GDExtensionConstTypePtr *p_args, GDExtensionTypePtr r_ret) const {
+        call_with_ptr_args_function(wrapper, static_cast<T *>(p_instance), p_args, BuildIndexSequence<sizeof...(P)>{});
+    }
+
+    MethodBindTF(const std::function<void (T*, P...)> &p_wrapper):
+        wrapper(p_wrapper)
+    {
+        generate_argument_types(sizeof...(P));
+        set_argument_count(sizeof...(P));
+    }
+};
+
+template <typename T, typename... P>
+MethodBind *create_function_bind(const std::function<void (T*, P...)> &p_wrapper) {
+    MethodBind *a = memnew((MethodBindTF<T, P...>)(p_wrapper));
+    a->set_instance_class(T::get_class_static());
+    return a;
+}
+
+template <typename T, typename R, typename... P>
+class MethodBindTRF : public MethodBind {
+    std::function<R (T*, P...)> wrapper;
+
+protected:
+// GCC raises warnings in the case P = {} as the comparison is always false...
+#if defined(__GNUC__) && !defined(__clang__)
+    #pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wlogical-op"
+#endif
+    virtual GDExtensionVariantType  gen_argument_type(int p_arg) const {
+        if (p_arg >= 0 && p_arg < (int)sizeof...(P)) {
+            return call_get_argument_type<P...>(p_arg);
+        } else {
+            return GDEXTENSION_VARIANT_TYPE_NIL;
+        }
+    }
+
+    virtual PropertyInfo gen_argument_type_info(int p_arg) const {
+        PropertyInfo pi;
+        if (p_arg >= 0 && p_arg < (int)sizeof...(P)) {
+            call_get_argument_type_info<P...>(p_arg, pi);
+        } else {
+            pi = PropertyInfo();
+        }
+        return pi;
+    }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+public:
+
+    virtual GDExtensionClassMethodArgumentMetadata get_argument_metadata(int p_arg) const {
+        return call_get_argument_metadata<P...>(p_arg);
+    }
+
+    Variant call(GDExtensionClassInstancePtr p_instance, const GDExtensionConstVariantPtr *p_args,
+                 GDExtensionInt p_argcount, GDExtensionCallError &r_error) const override {
+#ifdef DEBUG_ENABLED
+        if ((size_t)p_argcount > sizeof...(P)) {
+            r_error.error = GDEXTENSION_CALL_ERROR_TOO_MANY_ARGUMENTS;
+            r_error.expected = (int32_t)sizeof...(P);
+            return;
+        }
+
+        if ((size_t)p_argcount < sizeof...(P)) {
+            r_error.error = GDEXTENSION_CALL_ERROR_TOO_FEW_ARGUMENTS;
+            r_error.expected = (int32_t)sizeof...(P);
+            return;
+        }
+#endif
+
+        Variant ret;
+
+        call_with_variant_args_function_ret(wrapper, static_cast<T *>(p_instance), p_args, ret, r_error, BuildIndexSequence<sizeof...(P)>{});
+
+        return ret;
+    }
+
+    void ptrcall(GDExtensionClassInstancePtr p_instance, const GDExtensionConstTypePtr *p_args,
+                 GDExtensionTypePtr r_return) const override {
+        call_with_ptr_args_function_ret(wrapper, static_cast<T *>(p_instance), p_args, r_return, BuildIndexSequence<sizeof...(P)>{});
+    }
+
+
+    MethodBindTRF(const std::function<R (T*, P...)> &p_wrapper):
+        wrapper(p_wrapper)
+    {
+        generate_argument_types(sizeof...(P));
+        set_argument_count(sizeof...(P));
+    }
+};
+
+template <typename T, typename R, typename... P>
+MethodBind *create_function_bind(const std::function<R (T*, P...)> &p_wrapper) {
+    MethodBind *a = memnew((MethodBindTRF<T, R, P...>)(p_wrapper));
+    a->set_instance_class(T::get_class_static());
+    return a;
 }
 
 } // namespace godot

@@ -180,6 +180,9 @@ public:
 	template <typename M>
 	static MethodBind *bind_vararg_method(uint32_t p_flags, StringName p_name, M p_method, const MethodInfo &p_info = MethodInfo(), const std::vector<Variant> &p_default_args = std::vector<Variant>{}, bool p_return_nil_is_variant = true);
 
+    template<typename T, typename N, typename R, typename... P>
+    static MethodBind *bind_function(N p_name, const std::function<R (T*, P...)> &p_wrapper);
+
 	static void add_property_group(const StringName &p_class, const String &p_name, const String &p_prefix);
 	static void add_property_subgroup(const StringName &p_class, const String &p_name, const String &p_prefix);
 	static void add_property(const StringName &p_class, const PropertyInfo &p_pinfo, const StringName &p_setter, const StringName &p_getter, int p_index = -1);
@@ -347,6 +350,12 @@ MethodBind *ClassDB::bind_vararg_method(uint32_t p_flags, StringName p_name, M p
 	bind_method_godot(type.name, bind);
 
 	return bind;
+}
+
+template<typename T, typename N, typename R, typename... P>
+MethodBind *ClassDB::bind_function(N p_name, const std::function<R (T*, P...)> &p_wrapper) {
+    MethodBind *bind = create_function_bind<T>(p_wrapper);
+    return bind_methodfi(METHOD_FLAGS_DEFAULT, bind, p_name, nullptr, 0);
 }
 
 #define GDREGISTER_CLASS(m_class) ::godot::ClassDB::register_class<m_class>();
