@@ -183,7 +183,10 @@ public:
     template<typename T, typename N, typename R, typename... P>
     static MethodBind *bind_function(N p_name, const std::function<R (T*, P...)> &p_wrapper);
 
-	static void add_property_group(const StringName &p_class, const String &p_name, const String &p_prefix);
+    template<typename N, typename C>
+    static MethodBind *bind_closure(N p_name, C p_closure);
+
+        static void add_property_group(const StringName &p_class, const String &p_name, const String &p_prefix);
 	static void add_property_subgroup(const StringName &p_class, const String &p_name, const String &p_prefix);
 	static void add_property(const StringName &p_class, const PropertyInfo &p_pinfo, const StringName &p_setter, const StringName &p_getter, int p_index = -1);
 	static void add_signal(const StringName &p_class, const MethodInfo &p_signal);
@@ -355,6 +358,12 @@ MethodBind *ClassDB::bind_vararg_method(uint32_t p_flags, StringName p_name, M p
 template<typename T, typename N, typename R, typename... P>
 MethodBind *ClassDB::bind_function(N p_name, const std::function<R (T*, P...)> &p_wrapper) {
     MethodBind *bind = create_function_bind<T>(p_wrapper);
+    return bind_methodfi(METHOD_FLAGS_DEFAULT, bind, p_name, nullptr, 0);
+}
+
+template<typename N, typename C>
+MethodBind *ClassDB::bind_closure(N p_name, C p_closure) {
+    MethodBind *bind = create_function_bind(std::function(p_closure));
     return bind_methodfi(METHOD_FLAGS_DEFAULT, bind, p_name, nullptr, 0);
 }
 
