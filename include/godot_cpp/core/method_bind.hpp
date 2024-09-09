@@ -776,13 +776,13 @@ public:
         if ((size_t)p_argcount > sizeof...(P)) {
             r_error.error = GDEXTENSION_CALL_ERROR_TOO_MANY_ARGUMENTS;
             r_error.expected = (int32_t)sizeof...(P);
-            return;
+            return Variant();
         }
 
         if ((size_t)p_argcount < sizeof...(P)) {
             r_error.error = GDEXTENSION_CALL_ERROR_TOO_FEW_ARGUMENTS;
             r_error.expected = (int32_t)sizeof...(P);
-            return;
+            return Variant();
         }
 #endif
 
@@ -852,13 +852,13 @@ public:
         if ((size_t)p_argcount > sizeof...(P)) {
             r_error.error = GDEXTENSION_CALL_ERROR_TOO_MANY_ARGUMENTS;
             r_error.expected = (int32_t)sizeof...(P);
-            return;
+            return Variant();
         }
 
         if ((size_t)p_argcount < sizeof...(P)) {
             r_error.error = GDEXTENSION_CALL_ERROR_TOO_FEW_ARGUMENTS;
             r_error.expected = (int32_t)sizeof...(P);
-            return;
+            return Variant();
         }
 #endif
 
