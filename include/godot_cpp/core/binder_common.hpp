@@ -697,7 +697,7 @@ void call_with_variant_args_function(const std::function<void (T*, P...)> &p_wra
 #ifdef DEBUG_METHODS_ENABLED
     p_wrapper(p_instance, VariantCasterAndValidate<P>::cast(argsp.data(), Is, r_error)...);
 #else
-    p_wrapper(p_instance, VariantCaster<P>::cast(*p_args[Is])...);
+    p_wrapper(p_instance, VariantCaster<P>::cast(*argsp.data()[Is])...);
 #endif
 }
 
@@ -718,7 +718,7 @@ void call_with_variant_args_function_ret(const std::function<R (T*, P...)> &p_wr
 #ifdef DEBUG_METHODS_ENABLED
     r_ret = p_wrapper(p_instance, VariantCasterAndValidate<P>::cast(argsp.data(), Is, r_error)...);
 #else
-    r_ret = p_wrapper(p_instance, VariantCaster<P>::cast(*p_args[Is])...);
+    r_ret = p_wrapper(p_instance, VariantCaster<P>::cast(*argsp.data()[Is])...);
 #endif
 }
 
