@@ -47,19 +47,30 @@
 
 #include <vector>
 
+/** @file */
+
 #define ADD_SIGNAL(m_signal) ::godot::ClassDB::add_signal(get_class_static(), m_signal)
 #define ADD_GROUP(m_name, m_prefix) ::godot::ClassDB::add_property_group(get_class_static(), m_name, m_prefix)
 #define ADD_SUBGROUP(m_name, m_prefix) ::godot::ClassDB::add_property_subgroup(get_class_static(), m_name, m_prefix)
 #define ADD_PROPERTY(m_property, m_setter, m_getter) ::godot::ClassDB::add_property(get_class_static(), m_property, m_setter, m_getter)
 #define ADD_PROPERTYI(m_property, m_setter, m_getter, m_index) ::godot::ClassDB::add_property(get_class_static(), m_property, m_setter, m_getter, m_index)
 
+/**
+ * Export a property to the Godot editor using anonymous functions.
+ * 
+ * @param m_property The class field as a bare identifier.
+ * @param m_type The type of the property, as a member of `Variant::Type`.
+ * @param ... Optional additional arguments to the `PropertyInfo` constructor: a property hint (one of the `PROPERTY_HINT_*` constants), a property hint string (syntax depends on the property hint), and a property usage (one of the `PROPERTY_USAGE_*` constants).
+ * 
+ * Example usage: `EXPORT_PROPERTY(twistPivot, Variant::OBJECT, PROPERTY_HINT_NODE_TYPE, "Node3D");`
+ */
 #define EXPORT_PROPERTY(m_property, m_type, ...) \
     do {                            \
         typedef decltype(static_cast<self_type *>(nullptr)->m_property) property_t; \
         ClassDB::bind_closure(D_METHOD("set_" #m_property), [](self_type *self, property_t new_value) { self->m_property = new_value; }); \
         ClassDB::bind_closure(D_METHOD("get_" #m_property), [](self_type *self) -> property_t { return self->m_property; });              \
         ADD_PROPERTY(                       \
-            PropertyInfo(Variant::m_type, #m_property __VA_OPT__(,) __VA_ARGS__),              \
+            PropertyInfo(m_type, #m_property __VA_OPT__(,) __VA_ARGS__),              \
             "set_" #m_property, \
             "get_" #m_property \
         ); \
