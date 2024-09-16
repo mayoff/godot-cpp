@@ -76,6 +76,39 @@
         ); \
     } while (false)
 
+/**
+ * Export a property to the Godot editor using anonymous functions.
+ * 
+ * @param m_property The class field as a bare identifier.
+ * @param m_type The type of the property, as a member of `Variant::Type`.
+ * @param m_setter The setter for this property.
+ * @param ... Optional additional arguments to the `PropertyInfo` constructor: a property hint (one of the `PROPERTY_HINT_*` constants), a property hint string (syntax depends on the property hint), and a property usage (one of the `PROPERTY_USAGE_*` constants).
+ * 
+ * Example usage:
+ * 
+ * ```
+ * EXPORT_PROPERTY(
+ *     twistPivot, Variant::OBJECT,
+ *     [](MyClass *self, Node3D *newValue) {
+ *         self->twistPivot = newValue;
+ *         needToUpdateMechanism = true;
+ *     },
+ *     PROPERTY_HINT_NODE_TYPE, "Node3D"
+ * );
+ * ```
+ */
+#define EXPORT_PROPERTY_WITH_SETTER(m_property, m_type, m_setter, ...) \
+    do {                            \
+        typedef decltype(static_cast<self_type *>(nullptr)->m_property) property_t; \
+        ClassDB::bind_closure(D_METHOD("set_" #m_property), m_setter); \
+        ClassDB::bind_closure(D_METHOD("get_" #m_property), [](self_type *self) -> property_t { return self->m_property; });              \
+        ADD_PROPERTY(                       \
+            PropertyInfo(Variant::m_type, #m_property __VA_OPT__(,) __VA_ARGS__),              \
+            "set_" #m_property, \
+            "get_" #m_property \
+        ); \
+    } while (false)
+
 namespace godot {
 
 namespace internal {
